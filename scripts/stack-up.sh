@@ -18,14 +18,35 @@ case "$MONGO_URL" in
     ;;
 esac
 
+# localhost can be IPv4 or IPv6 (Vite listens on ::1 on macOS): probe both.
+port_in_use() {
+  local host
+  for host in 127.0.0.1 ::1; do
+    if (exec 3<>"/dev/tcp/$host/$1") 2>/dev/null; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 for port in 3000 4000; do
-  if (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null; then
+  if port_in_use "$port"; then
     echo "stack-up: port $port is in use; stop make dev first" >&2
     exit 1
   fi
 done
 
 mkdir -p "$STACK_DIR"
+
+# From here on the ports are ours: on any failure, stop what this run started.
+on_exit() {
+  local status=$?
+  if [ "$status" -ne 0 ]; then
+    echo "stack-up: failed, stopping the stack" >&2
+    bash "$ROOT/scripts/stack-down.sh" >&2
+  fi
+}
+trap on_exit EXIT
 
 install_deps() {
   if [ -n "${CI:-}" ] || [ ! -d "$1/node_modules" ]; then
@@ -69,3 +90,11 @@ install_deps "$FRONTEND_DIR"
 )
 
 bash "$ROOT/scripts/wait-for-stack.sh"
+
+# A port answered, but it must be our processes (vite exits on a taken port).
+for name in backend frontend; do
+  if ! kill -0 "$(cat "$STACK_DIR/$name.pid")" 2>/dev/null; then
+    echo "stack-up: $name exited; see $STACK_DIR/$name.log" >&2
+    false
+  fi
+done

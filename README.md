@@ -18,6 +18,10 @@ npm run stack:down
 
 `stack-up.sh` drops the `bomberman-e2e` database at the start of each run. It refuses any MongoDB URL that is not local.
 
+## Agents
+
+`.claude/` holds the agent rules and the `/e2e` skill (run, status, stop, fix, CI run, add a spec). From the workspace root, `/e2e` routes to it.
+
 ## CI
 
 - `checks` (Biome, `tsc`) runs on every PR to `main`.
