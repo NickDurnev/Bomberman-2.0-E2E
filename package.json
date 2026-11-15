@@ -1,0 +1,22 @@
+{
+  "name": "bomberman-2.0-e2e",
+  "private": true,
+  "description": "End-to-end tests for Bomberman 2.0 (Playwright)",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "biome ci .",
+    "typecheck": "tsc --noEmit",
+    "test": "playwright test",
+    "report": "playwright show-report",
+    "stack:up": "bash scripts/stack-up.sh",
+    "stack:down": "bash scripts/stack-down.sh"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3"
+  }
+}
