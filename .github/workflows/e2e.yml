@@ -82,4 +82,6 @@ jobs:
             e2e/playwright-report/
             e2e/test-results/
             e2e/.stack/*.log
+          # .stack/ is a hidden folder; upload-artifact skips those by default.
+          include-hidden-files: true
           retention-days: 14
