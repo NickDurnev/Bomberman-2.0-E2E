@@ -38,15 +38,15 @@ jobs:
       run:
         working-directory: e2e
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: e2e
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: NickDurnev/Bomberman-2.0
           ref: ${{ inputs.frontend_ref }}
           path: Bomberman-2.0
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: NickDurnev/Bomberman-2.0-Backend
           ref: ${{ inputs.backend_ref }}
