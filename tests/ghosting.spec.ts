@@ -21,7 +21,7 @@ import { expect, test } from "./fixtures/players";
 // Ghosting: socket listeners that stack up, so one server event runs its
 // handler more than once. The client socket is a singleton for the page
 // lifetime, so the leaks that matter happen inside one page: SPA navigation,
-// React re-mounts and Phaser game destroy/create. A restart reloads the page.
+// React re-mounts and Phaser game destroy/create. A restart stays in the page.
 
 test("listener counts stay fixed across in-page navigation and restart", async ({
   players,
@@ -49,7 +49,7 @@ test("listener counts stay fixed across in-page navigation and restart", async (
   await expectListeners(p2, "playing");
 
   // One server "show bomb" gives one bomb sprite on each client. Player 1
-  // stays on it: the match ends and both pages reload into the modal.
+  // stays on it: the match ends and both pages show the results modal.
   await holdKey(p1, "Space");
   await waitForBombs(p1, 1);
   await waitForBombs(p2, 1);
@@ -68,28 +68,26 @@ test("listener counts stay fixed across in-page navigation and restart", async (
 });
 
 // https://github.com/NickDurnev/Bomberman-2.0/issues/28
-// PlayerWinModal registers "end game" and "player win" in a 3 s timeout that
-// its cleanup never clears. Leaving /game within 3 s of a load leaks both.
-test.fail(
-  "player win modal does not leak end game listeners",
-  async ({ players }) => {
-    const { p1, p2 } = players;
-    const room = roomName("leak");
-    await hostRoom(p1, room);
-    await joinRoom(p2, room);
-    await startMatch(p1);
-    await waitForScene(p1, "Playing");
-    await waitForScene(p2, "Playing");
-    await endMatchBySelfKill(p1, p2);
+// Leaving the results modal for the menu removes its "end game" and
+// "player win" listeners with the Game route.
+test("leaving the results modal leaks no end-of-match listeners", async ({
+  players,
+}) => {
+  const { p1, p2 } = players;
+  const room = roomName("leak");
+  await hostRoom(p1, room);
+  await joinRoom(p2, room);
+  await startMatch(p1);
+  await waitForScene(p1, "Playing");
+  await waitForScene(p2, "Playing");
+  await endMatchBySelfKill(p1, p2);
 
-    // The restart modal is up right after the reload: leave at once.
-    await p1.getByRole("button", { name: /^Main Menu/ }).click();
-    await p1.waitForURL(url => url.pathname === "/");
-    // Let the modal's 3 s timeout fire.
-    await p1.waitForTimeout(3_500);
-    expect(await hookListeners(p1, ["end game", "player win"])).toEqual({
-      "end game": 0,
-      "player win": 0,
-    });
-  },
-);
+  // Leave as soon as the results modal is up.
+  await p1.getByRole("button", { name: /^Main Menu/ }).click();
+  await p1.waitForURL(url => url.pathname === "/");
+  // Poll: the URL changes before React unmounts the Game route.
+  await expect
+    .poll(() => hookListeners(p1, ["end game", "player win"]))
+    .toEqual({ "end game": 0, "player win": 0 });
+  await expectListeners(p1, "lobby");
+});

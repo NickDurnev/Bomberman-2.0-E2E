@@ -3,8 +3,8 @@ import { expect, type Page } from "@playwright/test";
 import type { E2EState } from "../global";
 
 // Thin wrappers around the frontend test hook (window.__e2e).
-// They return null while the hook is missing, for example during the reload
-// after a match, so expect.poll can wait across navigations.
+// They return null while the hook is missing, for example while a page loads,
+// so expect.poll can wait across navigations.
 
 export async function waitForHook(page: Page): Promise<void> {
   await expect

@@ -31,7 +31,7 @@ The game reads keys once per frame. Use `holdKey(page, key, ms)` from `tests/fix
 
 - Wait on a condition: `expect.poll`, `toBeVisible`, `waitForURL`, the hook wrappers.
 - Never use `page.waitForTimeout` to wait for the app. The only fixed waits are a key hold and a wait for a known app timer that the test is about (comment the timer).
-- The restart flow reloads the page. The hook wrappers return `null` during the reload, so `expect.poll` keeps polling.
+- The restart flow stays in the page: no reload, one Phaser game per match. The hook wrappers return `null` while a page loads, so `expect.poll` keeps polling.
 
 ## Rooms and data
 

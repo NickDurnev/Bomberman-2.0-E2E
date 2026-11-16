@@ -36,8 +36,8 @@ export async function startMatch(host: Page): Promise<void> {
   await start.click();
 }
 
-// The victim places a bomb and stays on it. The other player wins, and after
-// the server delay both pages reload into the restart modal.
+// The victim places a bomb and stays on it. The other player wins, and both
+// pages show the results modal in the same page (no reload).
 export async function endMatchBySelfKill(
   victim: Page,
   ...others: Page[]
@@ -49,7 +49,8 @@ export async function endMatchBySelfKill(
   await waitForRestartModal(victim, ...others);
 }
 
-// After a match ends, each page reloads and shows the restart modal.
+// After a match ends, each page shows the results modal (EndGameModal.tsx)
+// over the stopped board. Restart Game appears once the next game exists.
 export async function waitForRestartModal(...pages: Page[]): Promise<void> {
   for (const page of pages) {
     await expect(restartButton(page)).toBeVisible({ timeout: 30_000 });
@@ -59,7 +60,8 @@ export async function waitForRestartModal(...pages: Page[]): Promise<void> {
 export const restartButton = (page: Page) =>
   page.getByRole("button", { name: /^Restart Game/ });
 
-// Restart modal → Restart Game, once every player is in the new game.
+// Results modal → Restart Game, once every player is in the new game. The
+// countdown then moves both pages to /game/:newId without a reload.
 export async function restartMatch(host: Page): Promise<void> {
   await expect(restartButton(host)).toBeEnabled({ timeout: 15_000 });
   await restartButton(host).click();
