@@ -2,31 +2,27 @@ import { expect, type Page } from "@playwright/test";
 
 import { hookListeners } from "./hook";
 
-// Events with a known listener leak in the frontend. The main ghosting test
-// leaves them out; ghosting.spec.ts checks them in a test.fail() block.
-// https://github.com/NickDurnev/Bomberman-2.0/issues/28
-export const KNOWN_LEAK_EVENTS = ["end game", "player win"] as const;
-
 type Checkpoint = "lobby" | "pending" | "playing" | "restart-modal";
 
 // Socket listeners that are always mounted (src/components/Socket.tsx):
 // connect (identity + status) and disconnect.
 const app = { connect: 2, disconnect: 1 };
 
-// Pending.tsx on /pending/:id, RestartGameModal.tsx on /game/:id.
+// Pending.tsx on /pending/:id, EndGameModal.tsx on /game/:id.
 const room = { "update game": 1, "start timer": 1, "launch game": 1 };
 
-// Exact listener counts per event at each checkpoint, without
-// KNOWN_LEAK_EVENTS. An event that is not listed must have 0 listeners.
+// Exact listener counts per event at each checkpoint. An event that is not
+// listed must have 0 listeners.
 // Update this table in the same change as any client clientSocket.on/off.
 export const EXPECTED_LISTENERS: Record<Checkpoint, Record<string, number>> = {
   // Menu.tsx
   lobby: { ...app, "display pending games": 1 },
   // Pending.tsx
   pending: { ...app, ...room },
-  // RestartGameModal.tsx, usePlayerInfo.ts and the Playing scene
-  // (socketHandlers). usePlayerInfo and Playing both listen to
-  // "spoil was picked" and "show tombstone".
+  // EndGameModal.tsx, usePlayerInfo.ts and the Playing scene
+  // (socketHandlers). EndGameModal and Playing both listen to "end game" and
+  // "player win"; usePlayerInfo and Playing both listen to "spoil was picked"
+  // and "show tombstone".
   playing: {
     ...app,
     ...room,
@@ -37,11 +33,16 @@ export const EXPECTED_LISTENERS: Record<Checkpoint, Record<string, number>> = {
     "spoil was picked": 2,
     "show tombstone": 2,
     "player disconnect": 1,
+    "end game": 2,
+    "player win": 2,
   },
-  // RestartGameModal.tsx and usePlayerInfo.ts, no Phaser game.
+  // EndGameModal.tsx and usePlayerInfo.ts. The Playing scene removed its
+  // listeners at the end of the match.
   "restart-modal": {
     ...app,
     ...room,
+    "end game": 1,
+    "player win": 1,
     "spoil was picked": 1,
     "show tombstone": 1,
   },
@@ -53,9 +54,6 @@ export async function expectListeners(
 ): Promise<void> {
   const actual = async () => {
     const counts = await hookListeners(page);
-    for (const event of KNOWN_LEAK_EVENTS) {
-      delete counts[event];
-    }
     return Object.fromEntries(
       Object.entries(counts).filter(([, count]) => count > 0),
     );
