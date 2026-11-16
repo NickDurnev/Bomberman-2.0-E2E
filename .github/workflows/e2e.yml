@@ -51,7 +51,7 @@ jobs:
           repository: NickDurnev/Bomberman-2.0-Backend
           ref: ${{ inputs.backend_ref }}
           path: Bomberman-2.0-Backend
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
