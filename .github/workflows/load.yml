@@ -1,0 +1,88 @@
+# Runs the load test against production from a GitHub runner, so the bots
+# do not share one home network link. Manual only: Actions → Load test →
+# Run workflow. No SSH: the droplet columns stay empty; read the droplet
+# metrics from your own machine while it runs (load/README.md).
+name: Load test
+
+on:
+  workflow_dispatch:
+    inputs:
+      map:
+        description: "Map"
+        type: choice
+        options: [big_map, default_map, small_map]
+        default: big_map
+      steps:
+        description: "Players per step, comma-separated (e.g. 14,16,18)"
+        required: true
+        default: "14,16,18"
+      with_me:
+        description: "Wait for you to join each room (the room name is in the log)"
+        type: boolean
+        default: false
+      duration:
+        description: "Seconds of play per step (at most 150)"
+        default: "60"
+      green_ms:
+        description: "Green limit for the server share (ms)"
+        default: "50"
+      amber_ms:
+        description: "Amber limit for the server share (ms)"
+        default: "100"
+
+permissions:
+  contents: read
+
+# One load test at a time: two runs would measure each other.
+concurrency:
+  group: load-test
+  cancel-in-progress: false
+
+jobs:
+  load:
+    name: load
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HUSKY: "0"
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: e2e
+      # The map files of the deployed backend.
+      - uses: actions/checkout@v7
+        with:
+          repository: NickDurnev/Bomberman-2.0-Backend
+          ref: main
+          path: Bomberman-2.0-Backend
+          sparse-checkout: src/maps
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - run: npm ci
+      - name: Load test
+        env:
+          MAP: ${{ inputs.map }}
+          STEPS: ${{ inputs.steps }}
+          WITH_ME: ${{ inputs.with_me }}
+          DURATION: ${{ inputs.duration }}
+          GREEN_MS: ${{ inputs.green_ms }}
+          AMBER_MS: ${{ inputs.amber_ms }}
+        run: |
+          args=(--yes --map "$MAP" --steps "$STEPS" --duration "$DURATION" --green-ms "$GREEN_MS" --amber-ms "$AMBER_MS")
+          if [ "$WITH_ME" = "true" ]; then args+=(--with-me); fi
+          npm run load -- "${args[@]}"
+      - name: Report to the job summary
+        if: always()
+        run: cat load/results/*.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "No report." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: load-report
+          path: e2e/load/results/
+          if-no-files-found: ignore

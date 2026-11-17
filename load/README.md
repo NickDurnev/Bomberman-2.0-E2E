@@ -2,7 +2,7 @@
 
 Finds how many players one room holds before the game lags. Bots play real matches against a backend, one match per step (2, 4, … 14 players), and the tool gives each step a verdict: green, amber or red.
 
-It needs Node 22.18 or later (it runs the `.ts` files directly). It runs by hand from your computer, so the network path is the one your players have. CI runs only the unit tests (`npm run load:test`), never the load test.
+It needs Node 22.18 or later (it runs the `.ts` files directly). Run it by hand from your computer, or from a GitHub runner with the `Load test` workflow (see [Run on GitHub Actions](#run-on-github-actions)). The `checks` CI job runs only the unit tests (`npm run load:test`).
 
 ## Run
 
@@ -26,6 +26,17 @@ Against production the tool asks you to type `yes` (skip with `--yes`). Ctrl+C s
 | `--green-ms`, `--amber-ms` | `50`, `100` | Limits for the server share of the move echo and for fuse lateness |
 
 Set `LOAD_SSH` in your shell or in `.env` in this repo (gitignored). Never commit the droplet address.
+
+## Run on GitHub Actions
+
+From your computer, all bots share one network link. Above about 14 bots that link becomes the bottleneck, and the verdict then measures your network, not the server. A GitHub runner has a faster link.
+
+1. Open Actions → **Load test** → **Run workflow**. Set the map, the steps and, if you want to play, **with_me**. The target is always production.
+2. With **with_me**, read the room name in the live log of the `Load test` step and join it within 5 minutes.
+3. The runner has no SSH access, so the droplet columns stay empty. Run `npm run load:watch` on your computer during the run (it needs `LOAD_SSH`). It prints the pm2 metrics of `app` and the free memory every 5 s, and the maximums when you press Ctrl+C.
+4. The report is in the job summary and in the `load-report` artifact.
+
+The workflow allows one run at a time.
 
 ## What it measures
 
