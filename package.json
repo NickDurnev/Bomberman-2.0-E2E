@@ -3,7 +3,7 @@
   "private": true,
   "description": "End-to-end tests for Bomberman 2.0 (Playwright)",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.18"
   },
   "scripts": {
     "check": "biome ci .",

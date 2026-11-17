@@ -2,7 +2,7 @@
 
 Finds how many players one room holds before the game lags. Bots play real matches against a backend, one match per step (2, 4, … 14 players), and the tool gives each step a verdict: green, amber or red.
 
-It runs by hand from your computer, so the network path is the one your players have. CI runs only the unit tests (`npm run load:test`), never the load test.
+It needs Node 22.18 or later (it runs the `.ts` files directly). It runs by hand from your computer, so the network path is the one your players have. CI runs only the unit tests (`npm run load:test`), never the load test.
 
 ## Run
 
