@@ -13,6 +13,7 @@
     "stack:up": "bash scripts/stack-up.sh",
     "stack:down": "bash scripts/stack-down.sh",
     "load": "node load/run.ts",
+    "load:watch": "node load/watch.ts",
     "load:test": "node --test \"load/**/*.test.ts\""
   },
   "devDependencies": {

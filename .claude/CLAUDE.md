@@ -29,7 +29,7 @@ Read before you add or change a spec:
 | HTML report | `npm run report` |
 | Lint, format, types | `npm run check`, `npm run typecheck` |
 | Whole run from the root | `make e2e` |
-| Load test (by hand, production by default) | `npm run load` (see `load/README.md`); unit tests `npm run load:test` |
+| Load test (by hand, production by default) | `npm run load` (see `load/README.md`); unit tests `npm run load:test`; droplet metrics `npm run load:watch` |
 
 A local run outside Claude Code needs nothing special. Inside the Claude Code Bash sandbox, Chromium cannot reach local ports: run Playwright with the sandbox disabled.
 
@@ -42,6 +42,7 @@ A local run outside Claude Code needs nothing special. Inside the Claude Code Ba
 - `.github/workflows/ci.yml`: `checks` (Biome, `tsc`, `npm run load:test`) on PRs to `main`.
 - `load/`: the load test tool (`load/README.md`). Never run it against production without the maintainer.
 - `.github/workflows/e2e.yml`: `E2E`, `workflow_dispatch` only, inputs `frontend_ref` and `backend_ref` (default `dev`).
+- `.github/workflows/load.yml`: `Load test`, `workflow_dispatch` only, against production. Droplet metrics: `npm run load:watch` on the maintainer's computer.
 
 ## Workflow
 

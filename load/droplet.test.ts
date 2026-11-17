@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   aggregate,
   DEFAULT_POLL_MS,
+  formatPoll,
   parseLoadAvg,
   parseMemAvailableMb,
   parsePm2,
@@ -114,4 +115,24 @@ test("aggregate marks a restart when the app is missing", () => {
 
 test("the droplet is polled every 5 s, not more often", () => {
   assert.equal(DEFAULT_POLL_MS, 5000);
+});
+
+test("formatPoll prints the app metrics and the machine", () => {
+  const poll = {
+    procs: parsePm2(fixture("pm2-jlist.txt")),
+    memAvailableMb: 150,
+    loadAvg: 0.42,
+  };
+  assert.equal(
+    formatPoll("app", poll, new Date("2026-11-17T18:05:09Z")),
+    "18:05:09 | app cpu  12 % | mem  62 MB | loop p95   1.2 ms | restarts 3 | free 150 MB | load 0.42",
+  );
+});
+
+test("formatPoll says when the app is missing", () => {
+  const poll = { procs: [], memAvailableMb: 150, loadAvg: 0.42 };
+  assert.match(
+    formatPoll("app", poll, new Date("2026-11-17T18:05:09Z")),
+    /app not in pm2/,
+  );
 });

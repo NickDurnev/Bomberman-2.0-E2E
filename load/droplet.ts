@@ -89,6 +89,20 @@ export function aggregate(app: string, polls: Poll[]): ServerMetrics {
   };
 }
 
+// One line per poll for `npm run load:watch`. The time is UTC, as in the
+// GitHub Actions log.
+export function formatPoll(app: string, poll: Poll, now: Date): string {
+  const time = now.toISOString().slice(11, 19);
+  const s = poll.procs.find(p => p.name === app);
+  const machine = `free ${poll.memAvailableMb} MB | load ${poll.loadAvg.toFixed(2)}`;
+  if (!s) {
+    return `${time} | ${app} not in pm2 | ${machine}`;
+  }
+  const loop =
+    s.loopP95Ms === null ? "    -" : s.loopP95Ms.toFixed(1).padStart(5);
+  return `${time} | ${app} cpu ${String(s.cpu).padStart(3)} % | mem ${String(s.memMb).padStart(3)} MB | loop p95 ${loop} ms | restarts ${s.restarts} | ${machine}`;
+}
+
 const SPLIT = "__SPLIT__";
 
 // Each poll starts a pm2 CLI (a Node process) on the 1 vCPU droplet: poll
