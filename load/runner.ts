@@ -224,7 +224,12 @@ export async function runStep(n: number, deps: StepDeps): Promise<StepMetrics> {
     const launches = bots.map(b => b.waitLaunch());
     host.startTimer(gameId);
     await sleep(deps.countdownMs);
-    host.startGame(gameId);
+    // Every client counts down and sends "start game" (Pending.tsx). The
+    // server keeps the game id on each player's Play only then, and needs it
+    // to remove the player on disconnect.
+    for (const bot of bots) {
+      bot.startGame(gameId);
+    }
     await Promise.all(launches);
     launched = true;
 

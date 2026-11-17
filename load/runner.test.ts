@@ -97,6 +97,15 @@ test("runStep returns the step metrics", async () => {
   );
 });
 
+test("every bot sends start game, as every client does", async () => {
+  const room = fakeRoom(false);
+  await runStep(3, deps(room.make));
+  for (const id of ["bot-1", "bot-2", "bot-3"]) {
+    assert.ok(room.calls.includes(`${id} startGame`), `${id} startGame`);
+  }
+  assert.equal(room.calls.filter(c => c.endsWith("startTimer")).length, 1);
+});
+
 test("with-me skips N < 3", () => {
   assert.deepEqual(plannedSteps([2, 4], true), [4]);
   assert.deepEqual(plannedSteps([2, 4], false), [2, 4]);
