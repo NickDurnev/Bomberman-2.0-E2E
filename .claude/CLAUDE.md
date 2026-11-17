@@ -29,6 +29,7 @@ Read before you add or change a spec:
 | HTML report | `npm run report` |
 | Lint, format, types | `npm run check`, `npm run typecheck` |
 | Whole run from the root | `make e2e` |
+| Load test (by hand, production by default) | `npm run load` (see `load/README.md`); unit tests `npm run load:test` |
 
 A local run outside Claude Code needs nothing special. Inside the Claude Code Bash sandbox, Chromium cannot reach local ports: run Playwright with the sandbox disabled.
 
@@ -38,7 +39,8 @@ A local run outside Claude Code needs nothing special. Inside the Claude Code Ba
 - `tests/fixtures/`: `players.ts` (the `players` fixture), `hook.ts`, `keys.ts`, `lobby.ts` (UI flow steps), `expected-listeners.ts` (exact listener counts per checkpoint).
 - `tests/global.d.ts`: the `window.__e2e` type. Keep it equal to `Bomberman-2.0/src/utils/e2e.ts`.
 - `scripts/`: `stack-up.sh`, `stack-down.sh`, `wait-for-stack.sh`. Logs and PIDs in `.stack/` (gitignored).
-- `.github/workflows/ci.yml`: `checks` (Biome, `tsc`) on PRs to `main`.
+- `.github/workflows/ci.yml`: `checks` (Biome, `tsc`, `npm run load:test`) on PRs to `main`.
+- `load/`: the load test tool (`load/README.md`). Never run it against production without the maintainer.
 - `.github/workflows/e2e.yml`: `E2E`, `workflow_dispatch` only, inputs `frontend_ref` and `backend_ref` (default `dev`).
 
 ## Workflow

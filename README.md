@@ -18,11 +18,15 @@ npm run stack:down
 
 `stack-up.sh` drops the `bomberman-e2e` database at the start of each run. It refuses any MongoDB URL that is not local.
 
+## Load test
+
+`load/` holds a separate tool: bots play one room against a backend (production by default) and report how many players the room holds before the game lags. Run it by hand with `npm run load`; see [load/README.md](load/README.md).
+
 ## Agents
 
 `.claude/` holds the agent rules and the `/e2e` skill (run, status, stop, fix, CI run, add a spec). From the workspace root, `/e2e` routes to it.
 
 ## CI
 
-- `checks` (Biome, `tsc`) runs on every PR to `main`.
+- `checks` (Biome, `tsc`, the load tool's unit tests) runs on every PR to `main`.
 - `E2E` runs only by hand: **Actions → E2E → Run workflow**, with the frontend and backend refs (default `dev`).
