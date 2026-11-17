@@ -129,10 +129,30 @@ test("parseOptions reads flags and LOAD_SSH", () => {
   assert.equal(o.url, "http://localhost:4000");
   assert.deepEqual(o.steps, [2, 4]);
   assert.equal(o.thresholds.greenMs, 30);
-  assert.equal(o.ssh, "user@host");
+  assert.equal(parseOptions([], { LOAD_SSH: "user@host" }).ssh, "user@host");
   assert.equal(parseOptions(["--ssh", "a@b"], { LOAD_SSH: "x@y" }).ssh, "a@b");
 });
 
 test("parseOptions rejects a bad step list", () => {
   assert.throws(() => parseOptions(["--steps", "2,x"], {}), /steps/);
+});
+
+test("LOAD_SSH applies only to the production URL", () => {
+  const env = { LOAD_SSH: "user@host" };
+  assert.equal(
+    parseOptions(["--url", "http://localhost:4000"], env).ssh,
+    undefined,
+  );
+  assert.equal(
+    parseOptions(["--url", "http://localhost:4000", "--ssh", "a@b"], env).ssh,
+    "a@b",
+  );
+});
+
+test("parseOptions rejects a malformed ssh target", () => {
+  assert.throws(() => parseOptions([], { LOAD_SSH: "root@1.2.3.4;" }), /ssh/);
+  assert.equal(
+    parseOptions([], { LOAD_SSH: " root@1.2.3.4 " }).ssh,
+    "root@1.2.3.4",
+  );
 });

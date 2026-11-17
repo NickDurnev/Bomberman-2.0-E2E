@@ -36,6 +36,21 @@ const number = (name: string, value: string | undefined, fallback: number) => {
   return n;
 };
 
+// "user@host" or an ~/.ssh/config alias. Anything else would reach the
+// ssh command line.
+const SSH_TARGET = /^([\w.-]+@)?[\w.-]+$/;
+
+function sshTarget(value: string | undefined): string | undefined {
+  const target = value?.trim();
+  if (!target) {
+    return undefined;
+  }
+  if (!SSH_TARGET.test(target)) {
+    throw new Error("--ssh / LOAD_SSH must look like user@host");
+  }
+  return target;
+}
+
 export function parseOptions(
   argv: string[],
   env: Record<string, string | undefined>,
@@ -64,14 +79,18 @@ export function parseOptions(
       `--steps must be a list of whole numbers, got "${values.steps}"`,
     );
   }
+  const url = values.url ?? PRODUCTION_URL;
   return {
-    url: values.url ?? PRODUCTION_URL,
+    url,
     map: values.map ?? "default_map",
     steps,
     durationS: number("duration", values.duration, 60),
     pauseS: number("pause", values.pause, 5),
     withMe: values["with-me"] ?? false,
-    ssh: values.ssh ?? env.LOAD_SSH,
+    // LOAD_SSH points at the production droplet: ignore it for other URLs.
+    ssh: sshTarget(
+      values.ssh ?? (url === PRODUCTION_URL ? env.LOAD_SSH : undefined),
+    ),
     pm2Path: values["pm2-path"] ?? DEFAULT_PM2_PATH,
     yes: values.yes ?? false,
     thresholds: {
