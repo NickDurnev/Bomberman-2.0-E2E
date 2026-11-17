@@ -321,6 +321,10 @@ export class Bot {
     const interval = setInterval(tick, PING);
     try {
       await new Promise<void>(resolve => {
+        if (abort?.aborted) {
+          resolve();
+          return;
+        }
         const timer = setTimeout(resolve, durationMs);
         abort?.addEventListener("abort", () => {
           clearTimeout(timer);

@@ -91,6 +91,10 @@ export function aggregate(app: string, polls: Poll[]): ServerMetrics {
 
 const SPLIT = "__SPLIT__";
 
+// Each poll starts a pm2 CLI (a Node process) on the 1 vCPU droplet: poll
+// rarely, so the monitor does not cause the load it measures.
+export const DEFAULT_POLL_MS = 5000;
+
 export type DropletOptions = {
   target: string;
   pm2Path: string;
@@ -107,7 +111,7 @@ export class DropletMonitor {
   private inFlight: Promise<void> | undefined;
 
   constructor(opts: DropletOptions) {
-    this.opts = { intervalMs: 2000, ...opts };
+    this.opts = { intervalMs: DEFAULT_POLL_MS, ...opts };
     this.sshArgs = [
       "-o",
       "BatchMode=yes",

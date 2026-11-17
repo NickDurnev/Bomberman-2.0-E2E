@@ -76,3 +76,10 @@ test("disconnects are counted", () => {
   r.disconnect();
   assert.equal(r.result().disconnects, 2);
 });
+
+test("a bomb set off early by a blast is not a fuse sample", () => {
+  const r = new Recorder();
+  r.shownBomb({ col: 1, row: 1 }, "b1", 2000, 1000);
+  r.detonated("b1", 2500);
+  assert.deepEqual(r.result().fuse, []);
+});

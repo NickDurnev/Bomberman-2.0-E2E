@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   aggregate,
+  DEFAULT_POLL_MS,
   parseLoadAvg,
   parseMemAvailableMb,
   parsePm2,
@@ -109,4 +110,8 @@ test("aggregate marks a restart when the app is missing", () => {
   };
   const gone = { procs: [], memAvailableMb: 140, loadAvg: 0.1 };
   assert.equal(aggregate("app", [ok, gone]).restarted, true);
+});
+
+test("the droplet is polled every 5 s, not more often", () => {
+  assert.equal(DEFAULT_POLL_MS, 5000);
 });

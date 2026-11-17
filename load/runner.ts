@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import type { GameData } from "./bot.ts";
 import { Recorder, type RecorderResult } from "./recorder.ts";
-import { summarize } from "./stats.ts";
+import { percentile, summarize } from "./stats.ts";
 import {
   DEFAULT_THRESHOLDS,
   type ServerMetrics,
@@ -10,6 +10,24 @@ import {
 } from "./verdict.ts";
 
 export const PRODUCTION_URL = "https://bomberman.cinematik.click";
+// The server ends a match after GAME_DURATION = 180 s. A step must end first,
+// so its own teardown (not the timeout) closes the match.
+export const MAX_DURATION_S = 150;
+
+export function isProduction(url: string): boolean {
+  try {
+    return new URL(url).host === new URL(PRODUCTION_URL).host;
+  } catch {
+    return false;
+  }
+}
+
+// The network part of the echo time: p95 of idle ack round trips, so normal
+// network jitter is not counted as server lag.
+export function baselineFrom(samples: number[]): number {
+  return percentile(samples, 95);
+}
+
 export const DEFAULT_PM2_PATH = "$HOME/.nvm/versions/node/v22.14.0/bin";
 
 export type Options = {
@@ -51,6 +69,31 @@ function sshTarget(value: string | undefined): string | undefined {
   return target;
 }
 
+function duration(seconds: number): number {
+  if (seconds > MAX_DURATION_S) {
+    throw new Error(
+      `--duration must be at most ${MAX_DURATION_S} s (the match ends at 180 s)`,
+    );
+  }
+  return seconds;
+}
+
+// Rejects as soon as `signal` aborts, so a wait does not outlive Ctrl+C.
+function untilAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) {
+    return promise;
+  }
+  if (signal.aborted) {
+    return Promise.reject(new Error("aborted"));
+  }
+  return new Promise<T>((resolve, reject) => {
+    signal.addEventListener("abort", () => reject(new Error("aborted")), {
+      once: true,
+    });
+    promise.then(resolve, reject);
+  });
+}
+
 export function parseOptions(
   argv: string[],
   env: Record<string, string | undefined>,
@@ -84,12 +127,12 @@ export function parseOptions(
     url,
     map: values.map ?? "default_map",
     steps,
-    durationS: number("duration", values.duration, 60),
+    durationS: duration(number("duration", values.duration, 60)),
     pauseS: number("pause", values.pause, 5),
     withMe: values["with-me"] ?? false,
     // LOAD_SSH points at the production droplet: ignore it for other URLs.
     ssh: sshTarget(
-      values.ssh ?? (url === PRODUCTION_URL ? env.LOAD_SSH : undefined),
+      values.ssh ?? (isProduction(url) ? env.LOAD_SSH : undefined),
     ),
     pm2Path: values["pm2-path"] ?? DEFAULT_PM2_PATH,
     yes: values.yes ?? false,
@@ -197,8 +240,11 @@ export async function runStep(n: number, deps: StepDeps): Promise<StepMetrics> {
   let botCpuPct = 0;
 
   try {
-    await Promise.all(bots.map(b => b.connect()));
-    const gameId = await host.createGame(deps.roomName, deps.mapName);
+    await untilAbort(Promise.all(bots.map(b => b.connect())), deps.abort);
+    const gameId = await untilAbort(
+      host.createGame(deps.roomName, deps.mapName),
+      deps.abort,
+    );
 
     const full = new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -219,19 +265,23 @@ export async function runStep(n: number, deps: StepDeps): Promise<StepMetrics> {
     if (deps.withMe) {
       deps.log(`  Join the room "${deps.roomName}" in your browser.`);
     }
-    await full;
+    await untilAbort(full, deps.abort);
 
-    const launches = bots.map(b => b.waitLaunch());
+    const launches = Promise.all(bots.map(b => b.waitLaunch()));
+    // Handled below; this keeps an early rejection (abort in the countdown)
+    // from becoming an unhandled rejection.
+    launches.catch(() => undefined);
     host.startTimer(gameId);
-    await sleep(deps.countdownMs);
+    await untilAbort(sleep(deps.countdownMs), deps.abort);
     // Every client counts down and sends "start game" (Pending.tsx). The
     // server keeps the game id on each player's Play only then, and needs it
     // to remove the player on disconnect.
     for (const bot of bots) {
       bot.startGame(gameId);
     }
-    await Promise.all(launches);
+    // The server runs the match from here on, even if a launch event is lost.
     launched = true;
+    await launches;
 
     await deps.monitor?.start();
     const cpuStart = process.cpuUsage();

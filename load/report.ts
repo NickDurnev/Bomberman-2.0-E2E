@@ -73,7 +73,7 @@ export function writeReport(input: ReportInput): { md: string; json: string } {
     "",
     `- URL: ${input.url}`,
     `- Map: ${input.map}`,
-    `- Network baseline: ${input.baselineMs.toFixed(1)} ms`,
+    `- Network baseline (p95, highest step): ${input.baselineMs.toFixed(1)} ms`,
     `- Options: \`${JSON.stringify(input.options)}\``,
     "",
     "```",

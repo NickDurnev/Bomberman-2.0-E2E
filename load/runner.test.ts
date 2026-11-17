@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Recorder } from "./recorder.ts";
 import {
+  baselineFrom,
+  isProduction,
   PRODUCTION_URL,
   parseOptions,
   plannedSteps,
@@ -164,4 +166,52 @@ test("parseOptions rejects a malformed ssh target", () => {
     parseOptions([], { LOAD_SSH: " root@1.2.3.4 " }).ssh,
     "root@1.2.3.4",
   );
+});
+
+test("an abort before launch stops the step and runs the teardown", async () => {
+  const room = fakeRoom(false);
+  const abort = new AbortController();
+  abort.abort();
+  await assert.rejects(
+    runStep(3, { ...deps(room.make), abort: abort.signal }),
+    /aborted/,
+  );
+  for (const id of ["bot-1", "bot-2", "bot-3"]) {
+    assert.ok(room.calls.includes(`${id} disconnect`), `${id} disconnected`);
+  }
+});
+
+test("a launch failure after start game cleans the new pending room", async () => {
+  const room = fakeRoom(false);
+  const make = (i: number): StepBot => {
+    const bot = room.make(i);
+    return i === 2
+      ? { ...bot, waitLaunch: () => Promise.reject(new Error("no launch")) }
+      : bot;
+  };
+  await assert.rejects(runStep(3, deps(make)), /no launch/);
+  assert.ok(room.calls.includes("bot-1 enter g2"));
+  assert.ok(room.calls.includes("bot-1 leavePending"));
+});
+
+test("parseOptions rejects a duration that reaches the match time limit", () => {
+  assert.throws(() => parseOptions(["--duration", "170"], {}), /duration/);
+  assert.equal(parseOptions(["--duration", "150"], {}).durationS, 150);
+});
+
+test("the production URL is recognised by host", () => {
+  assert.ok(isProduction("https://bomberman.cinematik.click/"));
+  assert.ok(!isProduction("http://localhost:4000"));
+  assert.equal(
+    parseOptions(["--url", "https://bomberman.cinematik.click/"], {
+      LOAD_SSH: "a@b",
+    }).ssh,
+    "a@b",
+  );
+});
+
+test("baselineFrom uses the p95 of the ack round trips", () => {
+  const samples = Array.from({ length: 20 }, (_, i) => 30 + i);
+  // Nearest rank: the 19th of 20 samples.
+  assert.equal(baselineFrom(samples), 48);
 });

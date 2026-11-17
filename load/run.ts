@@ -12,8 +12,9 @@ import {
   writeReport,
 } from "./report.ts";
 import {
+  baselineFrom,
+  isProduction,
   type Options,
-  PRODUCTION_URL,
   parseOptions,
   plannedSteps,
   runStep,
@@ -28,7 +29,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const pad = (n: number) => String(n).padStart(2, "0");
 
 async function confirmProduction(opts: Options): Promise<boolean> {
-  if (opts.url !== PRODUCTION_URL || opts.yes) {
+  if (!isProduction(opts.url) || opts.yes) {
     return true;
   }
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -39,7 +40,9 @@ async function confirmProduction(opts: Options): Promise<boolean> {
   return answer.trim() === "yes";
 }
 
-// Median ack round trip of "check game name": the network part of the lag.
+// Ack round trips of "check game name" on an idle server: the network part
+// of the lag. Measured before each step, so a network change between steps
+// is not counted as server lag.
 async function measureBaseline(url: string, grid: Grid): Promise<number> {
   const bot = new Bot({ url, index: 0, grid, recorder: new Recorder() });
   await bot.connect();
@@ -50,8 +53,7 @@ async function measureBaseline(url: string, grid: Grid): Promise<number> {
     samples.push(performance.now() - start);
   }
   bot.disconnect();
-  samples.sort((a, b) => a - b);
-  return samples[Math.floor(samples.length / 2)];
+  return baselineFrom(samples);
 }
 
 async function run(opts: Options): Promise<number> {
@@ -85,9 +87,8 @@ async function run(opts: Options): Promise<number> {
     console.log("No --ssh / LOAD_SSH: droplet metrics are skipped.");
   }
 
-  const baselineMs = await measureBaseline(opts.url, grid);
-  console.log(`Network baseline: ${baselineMs.toFixed(1)} ms`);
   console.log(HEADER);
+  const baselines: number[] = [];
 
   const rows: Row[] = [];
   const now = new Date();
@@ -97,21 +98,37 @@ async function run(opts: Options): Promise<number> {
         break;
       }
       const stamp = `${pad(now.getHours())}${pad(now.getMinutes())}`;
-      const m = await runStep(n, {
-        // Each step gets a fresh map state: boxes come back in a new match.
-        makeBot: (index, recorder) =>
-          new Bot({ url: opts.url, index, grid: loadMap(opts.map), recorder }),
-        mapName: opts.map,
-        roomName: `load-test-${stamp}-${n}-${Math.random().toString(36).slice(2, 5)}`,
-        durationMs: opts.durationS * 1000,
-        countdownMs: 3000,
-        joinTimeoutMs: opts.withMe ? 5 * 60_000 : 30_000,
-        withMe: opts.withMe,
-        baselineMs,
-        monitor,
-        abort: abort.signal,
-        log: line => console.log(line),
-      });
+      const baselineMs = await measureBaseline(opts.url, grid);
+      baselines.push(baselineMs);
+      let m: Awaited<ReturnType<typeof runStep>>;
+      try {
+        m = await runStep(n, {
+          // Each step gets a fresh map state: boxes come back in a new match.
+          makeBot: (index, recorder) =>
+            new Bot({
+              url: opts.url,
+              index,
+              grid: loadMap(opts.map),
+              recorder,
+            }),
+          mapName: opts.map,
+          roomName: `load-test-${stamp}-${n}-${Math.random().toString(36).slice(2, 5)}`,
+          durationMs: opts.durationS * 1000,
+          countdownMs: 3000,
+          joinTimeoutMs: opts.withMe ? 5 * 60_000 : 30_000,
+          withMe: opts.withMe,
+          baselineMs,
+          monitor,
+          abort: abort.signal,
+          log: line => console.log(line),
+        });
+      } catch (error) {
+        if (abort.signal.aborted) {
+          console.log(`  step ${n} stopped by Ctrl+C`);
+          break;
+        }
+        throw error;
+      }
       const v = classify(m, opts.thresholds);
       rows.push({ m, v });
       console.log(formatRow(m, v));
@@ -135,7 +152,7 @@ async function run(opts: Options): Promise<number> {
         url: opts.url,
         map: opts.map,
         options: { ...opts, ssh: opts.ssh ? "set" : "unset" },
-        baselineMs,
+        baselineMs: Math.max(0, ...baselines),
         rows,
       });
       console.log(finalLine(rows));

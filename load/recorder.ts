@@ -71,6 +71,10 @@ export class Recorder {
       return;
     }
     this.shown.delete(bombId);
+    if (at < due) {
+      // Set off early by another bomb's blast: not a fuse sample.
+      return;
+    }
     this.fuse.push(Math.max(0, at - due - BOMB_QUEUE_TICK_MS));
   }
 
