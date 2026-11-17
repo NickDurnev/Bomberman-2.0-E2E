@@ -42,10 +42,17 @@ test("bomb time and fuse lateness", () => {
   const r = new Recorder();
   r.sentBomb({ col: 3, row: 4 }, 950);
   r.shownBomb({ col: 3, row: 4 }, "b1", 2000, 1000);
-  r.detonated("b1", 3015);
+  r.detonated("b1", 3115);
   const result = r.result();
   assert.deepEqual(result.bomb, [50]);
   assert.deepEqual(result.fuse, [15]);
+});
+
+test("fuse lateness inside the 100 ms bomb queue tick is 0", () => {
+  const r = new Recorder();
+  r.shownBomb({ col: 1, row: 1 }, "b1", 2000, 1000);
+  r.detonated("b1", 3090);
+  assert.deepEqual(r.result().fuse, [0]);
 });
 
 test("a bomb created but never shown counts in bombsSent only", () => {

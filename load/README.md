@@ -34,7 +34,7 @@ Set `LOAD_SSH` in your shell or in `.env` in this repo (gitignored). Never commi
 | echo p50/p95/p99 | Time from a bot's `update player position` to its own `move player` echo (ms) |
 | srv share | Echo p95 minus the network baseline (median `check game name` ack round trip) |
 | bomb p95 | `create bomb` → `show bomb` |
-| fuse p95 | How late `detonate bomb` arrives after `show bomb` + the fuse delay; grows when the server event loop is busy |
+| fuse p95 | How late `detonate bomb` arrives after `show bomb` + the fuse delay, minus the 100 ms tick of the server's bomb queue; grows when the server event loop is busy |
 | lost % | Moves without an echo |
 | disc | Unexpected disconnects |
 | cpu max, mem MB, loop p95 | pm2 metrics of the `app` process (with `--ssh`) |

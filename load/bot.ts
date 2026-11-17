@@ -12,6 +12,7 @@ const INITIAL_BOMBS = 1;
 const BOMBS_SPOIL = 2;
 const PORTAL_DELAY_MS = 2000;
 const ACK_TIMEOUT_MS = 5000;
+const ECHO_GRACE_MS = 1000;
 
 type PlayerData = { id: string; spawnOnGrid: Cell };
 export type GameData = {
@@ -328,6 +329,8 @@ export class Bot {
       });
     } finally {
       clearInterval(interval);
+      // Let the echoes of the last moves arrive before the listeners go.
+      await new Promise(resolve => setTimeout(resolve, ECHO_GRACE_MS));
       for (const [event, fn] of handlers) {
         this.socket.off(event, fn as Listener);
       }

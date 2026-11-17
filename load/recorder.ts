@@ -11,6 +11,10 @@ export type RecorderResult = {
   disconnects: number;
 };
 
+// The backend checks its bomb queue every 100 ms (Bomberman-2.0-Backend
+// src/play.ts), so a detonation up to 100 ms after the fuse is normal.
+export const BOMB_QUEUE_TICK_MS = 100;
+
 const cellKey = (c: Cell) => `${c.col},${c.row}`;
 
 // Collects one bot's timings. Times are Date.now()-style milliseconds.
@@ -67,7 +71,7 @@ export class Recorder {
       return;
     }
     this.shown.delete(bombId);
-    this.fuse.push(at - due);
+    this.fuse.push(Math.max(0, at - due - BOMB_QUEUE_TICK_MS));
   }
 
   disconnect(): void {
