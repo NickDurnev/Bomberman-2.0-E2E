@@ -20,12 +20,26 @@ jobs:
     timeout-minutes: 15
     env:
       HUSKY: "0"
+    defaults:
+      run:
+        working-directory: e2e
     steps:
       - uses: actions/checkout@v7
+        with:
+          path: e2e
+      # The load tool's tests read the maps from the sibling backend checkout.
+      - uses: actions/checkout@v7
+        with:
+          repository: NickDurnev/Bomberman-2.0-Backend
+          ref: dev
+          path: Bomberman-2.0-Backend
+          sparse-checkout: src/maps
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: e2e/package-lock.json
       - run: npm ci
       - run: npm run check
       - run: npm run typecheck
+      - run: npm run load:test

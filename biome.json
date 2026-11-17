@@ -23,7 +23,8 @@
       "!**/*.log",
       "!playwright-report",
       "!test-results",
-      "!.stack"
+      "!.stack",
+      "!load/results"
     ]
   },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
@@ -173,7 +174,8 @@
       "!**/*.log",
       "!playwright-report",
       "!test-results",
-      "!.stack"
+      "!.stack",
+      "!load/results"
     ]
   },
   "css": {
