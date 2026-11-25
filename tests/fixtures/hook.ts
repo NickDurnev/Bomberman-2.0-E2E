@@ -18,6 +18,13 @@ export function hookState(page: Page): Promise<E2EState | null> {
   return page.evaluate(() => window.__e2e?.state() ?? null);
 }
 
+// Texture-pack key → pack id it was loaded from (null: missing).
+export function hookTextures(
+  page: Page,
+): Promise<Record<string, string | null>> {
+  return page.evaluate(() => window.__e2e?.textures() ?? {});
+}
+
 export function hookScenes(page: Page): Promise<string[]> {
   return page.evaluate(() => window.__e2e?.scenes() ?? []);
 }

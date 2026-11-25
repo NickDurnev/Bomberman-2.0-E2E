@@ -7,14 +7,34 @@ import { holdKey } from "./keys";
 export const roomName = (prefix: string) =>
   `${prefix}-${Math.random().toString(36).slice(2, 7)}`;
 
+export interface HostRoomOptions {
+  // The name on a pack card of the map form ("Classic"). Unset: the room keeps
+  // the form's default pack.
+  texturePack?: string;
+}
+
 // Menu → New Game → Small map → Play. Returns the game id from the URL.
-export async function hostRoom(page: Page, name: string): Promise<string> {
+export async function hostRoom(
+  page: Page,
+  name: string,
+  opts: HostRoomOptions = {},
+): Promise<string> {
   await page.getByPlaceholder("Game Name").fill(name);
   await page.getByRole("button", { name: "New Game" }).click();
   await page.getByRole("button", { name: /^Small map/ }).click();
+  if (opts.texturePack) {
+    await selectTexturePack(page, opts.texturePack);
+  }
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await page.waitForURL(/\/pending\/[^/]+$/);
   return new URL(page.url()).pathname.split("/").pop() ?? "";
+}
+
+// Map form: the pack radios are visually hidden, so a host clicks the card.
+async function selectTexturePack(page: Page, name: string): Promise<void> {
+  const packs = page.getByRole("radiogroup", { name: "Texture pack" });
+  await packs.getByText(name, { exact: true }).click();
+  await expect(packs.getByRole("radio", { name, exact: true })).toBeChecked();
 }
 
 // Joins a room from the lobby by its name.

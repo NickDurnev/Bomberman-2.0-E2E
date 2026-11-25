@@ -17,6 +17,7 @@ export interface E2EHook {
   listenerCounts(events?: string[]): Record<string, number>;
   scenes(): string[];
   state(): E2EState | null;
+  textures(): Record<string, string | null>;
 }
 
 declare global {
