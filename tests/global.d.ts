@@ -11,6 +11,8 @@ export interface E2EState {
   me: (E2EPlayer & { alive: boolean }) | null;
   enemies: E2EPlayer[];
   bombs: number;
+  // The name of the player the camera follows after the local death
+  spectating: string | null;
 }
 
 export interface E2EHook {
