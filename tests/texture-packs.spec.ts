@@ -101,3 +101,46 @@ test("a file missing from a pack falls back to the default pack", async ({
     portal_tileset: "default",
   });
 });
+
+type IconProbe = Window & { firstSpeedIcon?: string | null };
+
+// Records the src of the HUD Speed icon (PlayerStats.tsx) when it first
+// appears. Pending → game is a client-side navigation: the observer survives.
+const recordFirstSpeedIcon = (page: Page) =>
+  page.evaluate(() => {
+    const probe = window as IconProbe;
+    probe.firstSpeedIcon = null;
+    new MutationObserver((_, observer) => {
+      const icon = document.querySelector('img[alt="Speed"]');
+      if (icon) {
+        probe.firstSpeedIcon = icon.getAttribute("src");
+        observer.disconnect();
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+
+const firstSpeedIcon = (page: Page) =>
+  page.evaluate(() => (window as IconProbe).firstSpeedIcon);
+
+// The pending screen sets the HUD's pack: the HUD does not show the default
+// pack until the get current game ack arrives.
+test("the HUD draws the room's pack from its first frame", async ({
+  players,
+}) => {
+  const { p1, p2 } = players;
+  const room = roomName("hud");
+
+  await hostRoom(p1, room, { texturePack: "Classic" });
+  await joinRoom(p2, room);
+  await recordFirstSpeedIcon(p1);
+  await recordFirstSpeedIcon(p2);
+  await startMatch(p1);
+  await waitForScene(p1, "Playing");
+  await waitForScene(p2, "Playing");
+
+  for (const page of [p1, p2]) {
+    expect(await firstSpeedIcon(page)).toBe(
+      "/assets/packs/classic/speed_icon.png",
+    );
+  }
+});
